@@ -23,7 +23,7 @@
 #define CHANNELS   5
 #define TIMEOUT   5000
 
-static const uint8_t gammatable[] = {
+static const uint16_t gammatable[] = {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     0,  1,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  3,  3,
     3,  3,  4,  4,  4,  5,  5,  5,  6,  6,  7,  7,  7,  8,  8,  9,
@@ -47,7 +47,6 @@ const char* password = "costumes2342";
 WiFiUDP Udp;
 unsigned int localUdpPort = 4210;  // local port to listen on
 char incomingPacket[255];  // buffer for incoming packets
-const char* replyPacekt = "ok";
 uint8_t channel[5];
 unsigned long lastTimeReceivedData = 0;
 
@@ -93,21 +92,12 @@ void loop() {
   if (packetSize > 0) {
     digitalWrite(LED_GREEN, HIGH);
     
-    //Serial.printf("Received %d bytes from %s, port %d\n", packetSize, Udp.remoteIP().toString().c_str(), Udp.remotePort());
-    
     int len = Udp.read(incomingPacket, 255);
+    
     if (len > 0) {
-      incomingPacket[len] = 0;
-      //Serial.printf("UDP packet contents: %s\n", incomingPacket);
-  
-      // send back a reply, to the IP address and port we got the packet from
-      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-      Udp.write(replyPacekt);
-      Udp.endPacket();
-
-      lastTimeReceivedData = millis();
-
+      incomingPacket[len] = 0;  // to have a null terminated string
       handleCommandReceived(incomingPacket, len);
+      lastTimeReceivedData = millis();
     }
 
     digitalWrite(LED_GREEN, LOW);
@@ -124,14 +114,18 @@ void loop() {
 
 void handleCommandReceived(char *buffer, int len) {
 
-  if(len == CHANNELS) {
+  if(len == CHANNELS) { // +1 CRC Byte
+    //byte crc = CRCCalc(buffer, CHANNELS);
+    
+    //if(true || crc == buffer[CHANNELS]) {
 
-    for(int i=0;i<CHANNELS;i++) {
-      channel[i] = buffer[i];
-      if(channel[i] > 255) channel[i] = 255;
-    }
+      for(int i=0;i<CHANNELS;i++) {
+        channel[i] = buffer[i];
+        if(channel[i] > 255) channel[i] = 255;
+      }
 
-    output();
+      output();
+    //}
   }
   
 }
@@ -144,3 +138,17 @@ void output() {
   analogWrite(PIN_CH5, gammatable[channel[4]]);
 }
 
+uint8_t CRCCalc(char* pointer, uint16_t len) {
+    uint8_t CRC = 0x00;
+    uint16_t tmp;
+
+    while(len > 0) {
+        tmp = CRC << 1;
+        tmp += *pointer;
+        CRC = (tmp & 0xFF) + (tmp >> 8);
+        pointer++;
+        --len;
+    }
+
+    return CRC;
+}
