@@ -114,14 +114,15 @@ void allLeds(uint8_t red, uint8_t green, uint8_t blue) {
 }
 
 void handleCommandReceived(char *buffer, uint16_t len) {  
-  if(len == (strip.numPixels() * 3)) {
+  if(len == (strip.numPixels() * 3 + 3)) {  // 3 control bytes at the beginning
       float powerConsumption = 0.0f;
+      boolean useGamma = buffer[0] == 1;
       
       for(int i=0;i< strip.numPixels(); i++) {
 
-        byte red = gammatable[buffer[i*3]];
-        byte green = gammatable[buffer[i*3+1]];
-        byte blue = gammatable[buffer[i*3+2]];
+        byte red = useGamma ? gammatable[buffer[3+i*3]] : buffer[3+i*3];
+        byte green = useGamma ? gammatable[buffer[3+i*3+1]] : buffer[3+i*3+1];
+        byte blue = useGamma ? gammatable[buffer[3+i*3+2]] : buffer[3+i*3+2];
         
         strip.setPixelColor(i, red, green, blue);
         powerConsumption += MILLIWATT_PER_COLOR * (red/255.0f);
