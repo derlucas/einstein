@@ -17,9 +17,9 @@
 #define PIN           D1
 #define TIMEOUT       5000
 #define RECV_BUFLEN   1024
-#define LEDS          170
+#define LEDS          180
 #define MILLIWATT_PER_COLOR   72
-#define MILLIWATT_MAX   25000
+#define MILLIWATT_MAX   20000
 
 const uint8_t gammatable[] = {
         0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -47,6 +47,7 @@ WiFiUDP Udp;
 unsigned int localUdpPort = 4210;  // local port to listen on
 char incomingPacket[RECV_BUFLEN];  // buffer for incoming packets
 unsigned long lastTimeReceivedData = 0;
+boolean needToBlackout = false;
 
 void setup() {
   Serial.begin(115200);
@@ -73,7 +74,7 @@ void setup() {
   Serial.println(" connected");
 
   delay(500);
-  allLeds(0,20,4);
+  allLeds(0,10,2);
   
   strip.show();
   
@@ -85,11 +86,12 @@ void setup() {
 
 
 void loop() {
-  ArduinoOTA.handle();
-  
+
   uint16_t packetSize = Udp.parsePacket();
   
-  if (packetSize > 0) {    
+  if (packetSize) {    
+    //Serial.printf("Received %d bytes from %s, port %d\n", packetSize, Udp.remoteIP().toString().c_str(), Udp.remotePort());
+    
     uint16_t len = Udp.read(incomingPacket, RECV_BUFLEN);
     
     if (len > 0) {
@@ -99,14 +101,19 @@ void loop() {
       lastTimeReceivedData = millis();
     }
   }
-
-  if(millis() - lastTimeReceivedData > TIMEOUT) {
-    allLeds(0,0,0);
-  }
   
+
+  if(needToBlackout && (millis() - lastTimeReceivedData > TIMEOUT)) {
+    Serial.println("blackout due to timeout");    
+    allLeds(0,0,0);
+    needToBlackout = false;
+  }
+
+  ArduinoOTA.handle();  
 }
 
 void allLeds(uint8_t red, uint8_t green, uint8_t blue) {
+  needToBlackout = true;
   for(int i=0;i< strip.numPixels(); i++) {
     strip.setPixelColor(i, red, green, blue);
   }
@@ -115,6 +122,8 @@ void allLeds(uint8_t red, uint8_t green, uint8_t blue) {
 
 void handleCommandReceived(char *buffer, uint16_t len) {  
   if(len == (strip.numPixels() * 3 + 3)) {  // 3 control bytes at the beginning
+      needToBlackout = true;
+      
       float powerConsumption = 0.0f;
       boolean useGamma = buffer[0] == 1;
       
@@ -143,18 +152,3 @@ void handleCommandReceived(char *buffer, uint16_t len) {
 }
 
 
-
-uint8_t CRCCalc(char* pointer, uint16_t len) {
-    uint8_t CRC = 0x00;
-    uint16_t tmp;
-
-    while(len > 0) {
-        tmp = CRC << 1;
-        tmp += *pointer;
-        CRC = (tmp & 0xFF) + (tmp >> 8);
-        pointer++;
-        --len;
-    }
-
-    return CRC;
-}
