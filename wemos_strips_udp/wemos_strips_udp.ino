@@ -17,7 +17,7 @@
 #define PIN           D1
 #define TIMEOUT       5000
 #define RECV_BUFLEN   1024
-#define LEDS          180
+#define LEDS          190
 #define MILLIWATT_PER_COLOR   72
 #define MILLIWATT_MAX   20000
 
