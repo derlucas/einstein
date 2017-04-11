@@ -55,26 +55,25 @@ void setup() {
  
   Serial.printf("Connecting to %s ", ssid);
   WiFi.begin(ssid, password);
+  WiFi.mode(WIFI_STA);
   uint8_t i = 0;
   strip.begin();
 
-  allLeds(10,0,0);
-  delay(1000);
-  allLeds(0,10,0);
-  delay(1000);
-  allLeds(0,0,10);
-  delay(1000);
+  allLeds(1,0,0);
+  delay(200);
+  allLeds(0,1,0);
+  delay(200);
+  allLeds(0,0,1);
+  delay(200);
+  allLeds(0,0,0);
 
   while (WiFi.status() != WL_CONNECTED) {
-    strip.setPixelColor(i++, 255,0,0);
+    strip.setPixelColor(i++, 1,0,0);
     strip.show();
     delay(500);
     Serial.print(".");
   }
   Serial.println(" connected");
-
-  delay(500);
-  allLeds(0,10,2);
   
   strip.show();
   

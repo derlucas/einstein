@@ -64,6 +64,8 @@ void setup() {
 
   Serial.printf("Connecting to %s ", ssid);
   WiFi.begin(ssid, password);
+  WiFi.mode(WIFI_STA);
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(250);
     digitalWrite(LED_GREEN, LOW);
