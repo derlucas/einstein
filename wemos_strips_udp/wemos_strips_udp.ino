@@ -48,15 +48,78 @@ unsigned int localUdpPort = 4210;  // local port to listen on
 char incomingPacket[RECV_BUFLEN];  // buffer for incoming packets
 unsigned long lastTimeReceivedData = 0;
 boolean needToBlackout = false;
+uint8_t bssid[6] = { 0x80, 0xE8, 0x6F, 0x0C, 0x76, 0xF0 };
+
+void dbg_printf ( const char *format, ... ) {
+
+    static char sbuf[1400];                                                     // For debug lines
+    va_list varArgs;                                                            // For variable number of params
+
+    va_start ( varArgs, format );                                               // Prepare parameters
+    vsnprintf ( sbuf, sizeof ( sbuf ), format, varArgs );                       // Format the message
+    va_end ( varArgs );                                                         // End of using parameters
+
+    Serial.print ( sbuf );
+
+}
+
+void eventWiFi(WiFiEvent_t event) {
+     
+  switch(event) {
+    case WIFI_EVENT_STAMODE_CONNECTED:
+      dbg_printf("[WiFi] %d, Connected\n", event);
+    break;
+    case WIFI_EVENT_STAMODE_DISCONNECTED:
+      dbg_printf("[WiFi] %d, Disconnected - Status %d, %s\n", event, WiFi.status(), connectionStatus( WiFi.status() ).c_str() );      
+    break;    
+     case WIFI_EVENT_STAMODE_AUTHMODE_CHANGE:
+      dbg_printf("[WiFi] %d, AuthMode Change\n", event);
+    break;    
+    case WIFI_EVENT_STAMODE_GOT_IP:
+      dbg_printf("[WiFi] %d, Got IP\n", event);
+    break;    
+    case WIFI_EVENT_STAMODE_DHCP_TIMEOUT:
+      dbg_printf("[WiFi] %d, DHCP Timeout\n", event);
+    break;    
+    case WIFI_EVENT_SOFTAPMODE_STACONNECTED:
+      dbg_printf("[AP] %d, Client Connected\n", event);
+    break;    
+    case WIFI_EVENT_SOFTAPMODE_STADISCONNECTED:
+      dbg_printf("[AP] %d, Client Disconnected\n", event);
+    break;    
+    case WIFI_EVENT_SOFTAPMODE_PROBEREQRECVED:
+//      dbg_printf("[AP] %d, Probe Request Recieved\n", event);
+    break;
+  }
+  
+}
+
+String connectionStatus ( int which ) {
+    switch ( which ) {
+        case WL_CONNECTED: return "Connected";
+        case WL_NO_SSID_AVAIL: return "Network not availible";
+        case WL_CONNECT_FAILED: return "Wrong password";
+        case WL_IDLE_STATUS: return "Idle status";
+        case WL_DISCONNECTED: return "Disconnected";
+        default: return "Unknown";
+    }
+}
 
 void setup() {
   Serial.begin(115200);
   Serial.println();
  
   Serial.printf("Connecting to %s ", ssid);
+  
+
+  IPAddress ip(192, 168, 80, 133);
+  IPAddress gateway(192, 168, 80, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  WiFi.config(ip, gateway, subnet);
+  WiFi.onEvent(eventWiFi);
   WiFi.begin(ssid, password);
   WiFi.mode(WIFI_STA);
-  uint8_t i = 0;
+  
   strip.begin();
 
   allLeds(1,0,0);
@@ -68,11 +131,10 @@ void setup() {
   allLeds(0,0,0);
 
   while (WiFi.status() != WL_CONNECTED) {
-    strip.setPixelColor(i++, 1,0,0);
-    strip.show();
     delay(500);
     Serial.print(".");
   }
+  
   Serial.println(" connected");
   
   strip.show();
@@ -85,6 +147,8 @@ void setup() {
 
 
 void loop() {
+
+  
 
   uint16_t packetSize = Udp.parsePacket();
   
