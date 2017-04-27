@@ -50,6 +50,62 @@ char incomingPacket[255];  // buffer for incoming packets
 uint8_t channel[5];
 unsigned long lastTimeReceivedData = 0;
 
+void dbg_printf ( const char *format, ... ) {
+
+    static char sbuf[1400];                                                     // For debug lines
+    va_list varArgs;                                                            // For variable number of params
+
+    va_start ( varArgs, format );                                               // Prepare parameters
+    vsnprintf ( sbuf, sizeof ( sbuf ), format, varArgs );                       // Format the message
+    va_end ( varArgs );                                                         // End of using parameters
+
+    Serial.print ( sbuf );
+
+}
+
+void eventWiFi(WiFiEvent_t event) {
+     
+  switch(event) {
+    case WIFI_EVENT_STAMODE_CONNECTED:
+      dbg_printf("[WiFi] %d, Connected\n", event);
+    break;
+    case WIFI_EVENT_STAMODE_DISCONNECTED:
+      dbg_printf("[WiFi] %d, Disconnected - Status %d, %s\n", event, WiFi.status(), connectionStatus( WiFi.status() ).c_str() );      
+    break;    
+     case WIFI_EVENT_STAMODE_AUTHMODE_CHANGE:
+      dbg_printf("[WiFi] %d, AuthMode Change\n", event);
+    break;    
+    case WIFI_EVENT_STAMODE_GOT_IP:
+      dbg_printf("[WiFi] %d, Got IP\n", event);
+    break;    
+    case WIFI_EVENT_STAMODE_DHCP_TIMEOUT:
+      dbg_printf("[WiFi] %d, DHCP Timeout\n", event);
+    break;    
+    case WIFI_EVENT_SOFTAPMODE_STACONNECTED:
+      dbg_printf("[AP] %d, Client Connected\n", event);
+    break;    
+    case WIFI_EVENT_SOFTAPMODE_STADISCONNECTED:
+      dbg_printf("[AP] %d, Client Disconnected\n", event);
+    break;    
+    case WIFI_EVENT_SOFTAPMODE_PROBEREQRECVED:
+//      dbg_printf("[AP] %d, Probe Request Recieved\n", event);
+    break;
+  }
+  
+}
+
+String connectionStatus ( int which ) {
+    switch ( which ) {
+        case WL_CONNECTED: return "Connected";
+        case WL_NO_SSID_AVAIL: return "Network not availible";
+        case WL_CONNECT_FAILED: return "Wrong password";
+        case WL_IDLE_STATUS: return "Idle status";
+        case WL_DISCONNECTED: return "Disconnected";
+        default: return "Unknown";
+    }
+}
+
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
@@ -63,6 +119,11 @@ void setup() {
   pinMode(LED_GREEN, OUTPUT);
 
   Serial.printf("Connecting to %s ", ssid);
+  IPAddress ip(192, 168, 80, 112);
+  IPAddress gateway(192, 168, 80, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  WiFi.config(ip, gateway, subnet);
+  WiFi.onEvent(eventWiFi);
   WiFi.begin(ssid, password);
   WiFi.mode(WIFI_STA);
 
@@ -116,10 +177,7 @@ void loop() {
 
 void handleCommandReceived(char *buffer, int len) {
 
-  if(len == CHANNELS) { // +1 CRC Byte
-    //byte crc = CRCCalc(buffer, CHANNELS);
-    
-    //if(true || crc == buffer[CHANNELS]) {
+  if(len == CHANNELS) {
 
       for(int i=0;i<CHANNELS;i++) {
         channel[i] = buffer[i];
@@ -127,9 +185,7 @@ void handleCommandReceived(char *buffer, int len) {
       }
 
       output();
-    //}
   }
-  
 }
 
 void output() {
@@ -140,17 +196,3 @@ void output() {
   analogWrite(PIN_CH5, gammatable[channel[4]]);
 }
 
-uint8_t CRCCalc(char* pointer, uint16_t len) {
-    uint8_t CRC = 0x00;
-    uint16_t tmp;
-
-    while(len > 0) {
-        tmp = CRC << 1;
-        tmp += *pointer;
-        CRC = (tmp & 0xFF) + (tmp >> 8);
-        pointer++;
-        --len;
-    }
-
-    return CRC;
-}

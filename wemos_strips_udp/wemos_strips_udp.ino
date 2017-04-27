@@ -147,9 +147,6 @@ void setup() {
 
 
 void loop() {
-
-  
-
   uint16_t packetSize = Udp.parsePacket();
   
   if (packetSize) {    
